@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+
+<head>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.js"></script>
+</head>
+
+<body>
+<canvas id="myChart" width="400" height="400"></canvas>
+<script>
+var ctx = document.getElementById('myChart').getContext('2d');
+var myChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: ['1/01/2019', '2/01/2019', '3/01/2019', '4/01/2019', '5/01/2019'],
+        datasets: [{
+            label: '# of Votes',
+            data: [3, 6, 0, 7, 3],
+        }]
+    },
+    options: {
+				animation: {
+					duration: 0,
+				},
+        scales: {
+            yAxes: [{
+                ticks: {
+                    beginAtZero: true 
+                }
+            }]
+        }
+    }
+});
+</script>
+</body>
+
+</html>
