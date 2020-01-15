@@ -1,23 +1,43 @@
 from threading import Thread, Lock
 import pandas as pd
-from time import sleep
+from time import time, sleep
 from jinja2 import Template
 from os import path
-#from gpiozero import Button
 from datetime import datetime
+import RPi.GPIO as gpio
 
 FILE_LOCK = Lock()
+TEA_PATH = path.expanduser("~/tea")
+BOUNCE_WAIT_TIME = 0.3
+WRITE_TIME = 0
 
+def gpio_loop(tea_path: str, pin: int):
+    gpio.setwarnings(False)
+    gpio.setmode(gpio.BOARD)
+    gpio.setup(7, gpio.IN, pull_up_down=gpio.PUD_DOWN)
+    gpio.add_event_detect(7, gpio.RISING, callback=button_pressed)
 
-#def gpio_loop(tea_path: str, pin: int):
-#    button = Button(2) 
-#    button.when_pressed = button_pressed(button, tea_path)
-#
-#def button_pressed(button, tea_path):
-#    hist = load_hist(tea_path)
-#    today_index = hist.index
-#    with FILE_LOCK, open(tea_path, 'w') as f:
-        
+def button_pressed(button):
+    global WRITE_TIME
+    global BOUNCE_WAIT_TIME
+
+    if time() - WRITE_TIME < BOUNCE_WAIT_TIME:
+        return
+    else:
+        WRITE_TIME = time()
+
+    dates, vals = load_hist(TEA_PATH)
+    today = datetime.today().strftime('%y-%m-%d')
+
+    try:
+        index = dates.index(today)
+        vals[index] += 1
+        print(f"Today: {vals[index]}")
+    except:
+        dates.append(today)
+        vals.append(1)
+
+    save_hist(TEA_PATH, dates, vals)
 
 def html_loop(tea_path: str, repeat_time: int):
     while True:
@@ -25,7 +45,6 @@ def html_loop(tea_path: str, repeat_time: int):
         generate_html(tea_path)
 
 def generate_html(tea_path: str):
-    print("Generating html...")
     template_path = path.join(tea_path, "template.html")
     html_path = path.join(tea_path, "tea_graph.html")
 
@@ -53,9 +72,18 @@ def load_hist(tea_path: str) -> (list, list):
         vals = []
     return dates, vals
 
+def save_hist(tea_path, dates, vals):
+    log_path = path.join(tea_path, "test.csv")
+    df = pd.DataFrame(data={"dates":dates, "vals":vals})
+    with FILE_LOCK, open(log_path, 'w') as f:
+        csv = df.to_csv(index=False)
+        f.write(csv)
+
 if __name__ == "__main__":
-    tea_path = path.expanduser("~/Documents/repos/tea")
-    generate_html(tea_path)
-    html_thread = Thread(target=html_loop, args = (tea_path, 10))
+    generate_html(TEA_PATH)
+    html_thread = Thread(target=html_loop, args = (TEA_PATH, 1))
     html_thread.start()
-    #gpio_loop(tea_path, 7)
+    gpio_loop(TEA_PATH, 7)
+    while True:
+        pass
+
